@@ -40,6 +40,18 @@ export const lessonEvaluationSchema = z.object({
   ),
 });
 
+export const quizQuestionSchema = z.object({
+  teksti: z.string().min(3, 'Teksti i pyetjes duhet të ketë të paktën 3 karaktere'),
+  kategoria: z.enum(['SHENJA_RRUGORE', 'RREGULLA', 'SIGURIA', 'PARKIMI', 'PERPARESIA']),
+  veshtiresia: z.enum(['LEHTE', 'MESATARE', 'VESHTIRE']).default('MESATARE'),
+  imazhi: z.string().optional().nullable(),
+  aktiv: z.boolean().default(true),
+  answers: z
+    .array(z.object({ teksti: z.string().min(1, 'Përgjigja s\'mund të jetë bosh'), eSakte: z.boolean() }))
+    .min(2, 'Duhen të paktën 2 përgjigje')
+    .refine((arr) => arr.filter((a) => a.eSakte).length === 1, 'Duhet saktësisht një përgjigje e saktë'),
+});
+
 export const quizSubmitSchema = z.object({
   studentId: z.string().min(1),
   kohaSekonda: z.number().int().nonnegative(),

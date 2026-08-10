@@ -8,6 +8,7 @@ import studentsRoutes from './routes/students.routes';
 import lessonsRoutes from './routes/lessons.routes';
 import quizRoutes from './routes/quiz.routes';
 import reportsRoutes from './routes/reports.routes';
+import skillsRoutes from './routes/skills.routes';
 import { prisma } from './lib/prisma';
 
 const app = express();
@@ -25,6 +26,7 @@ app.use('/students', studentsRoutes);
 app.use('/lessons', lessonsRoutes);
 app.use('/quiz', quizRoutes);
 app.use('/reports', reportsRoutes);
+app.use('/skills', skillsRoutes);
 
 // Error handler qendror
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

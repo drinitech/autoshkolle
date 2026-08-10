@@ -212,7 +212,7 @@ function QuizContent() {
 
 export default function QuizPage() {
   return (
-    <AuthGate>
+    <AuthGate allowedRoles={['STUDENT']}>
       <QuizContent />
     </AuthGate>
   );

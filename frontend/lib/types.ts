@@ -77,3 +77,49 @@ export interface QuizSubmitResponse {
   saktesia: string;
   breakdown: { questionId: string; eSakte: boolean; correctAnswerId?: string; answerId: string | null }[];
 }
+
+export interface SkillCategory {
+  id: string;
+  emri: string;
+  renditja: number;
+}
+
+export type SkillLevel = 'E_DOBET' | 'MESATARE' | 'MIRE';
+
+export interface LessonEvaluation {
+  id: string;
+  shenimTekst: string | null;
+  ratings: { skillCategoryId: string; vleresimi: SkillLevel; skillCategory: SkillCategory }[];
+}
+
+export interface AdminOverview {
+  studenteAktive: number;
+  instruktoreTotal: number;
+  oreSot: number;
+  studenteGati: number;
+}
+
+export interface QuizAnswerAdmin {
+  id: string;
+  teksti: string;
+  eSakte: boolean;
+}
+
+export interface QuizQuestionAdmin {
+  id: string;
+  teksti: string;
+  kategoria: QuizCategory;
+  imazhi?: string | null;
+  veshtiresia: 'LEHTE' | 'MESATARE' | 'VESHTIRE';
+  aktiv: boolean;
+  answers: QuizAnswerAdmin[];
+}
+
+export interface QuizQuestionInput {
+  teksti: string;
+  kategoria: QuizCategory;
+  veshtiresia: 'LEHTE' | 'MESATARE' | 'VESHTIRE';
+  imazhi?: string | null;
+  aktiv: boolean;
+  answers: { teksti: string; eSakte: boolean }[];
+}

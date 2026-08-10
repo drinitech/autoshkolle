@@ -120,7 +120,7 @@ function BookLessonContent() {
 
 export default function BookLessonPage() {
   return (
-    <AuthGate>
+    <AuthGate allowedRoles={['STUDENT']}>
       <BookLessonContent />
     </AuthGate>
   );

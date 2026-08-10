@@ -7,6 +7,7 @@ import { Car } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import { useAuthStore } from '@/lib/auth-store';
+import { landingPathForRole } from '@/lib/roles';
 import { Button, Card, Input } from '@/components/ui';
 import type { AuthUser } from '@/lib/types';
 
@@ -24,7 +25,7 @@ export default function LoginPage() {
       const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', { email, password });
       setAuth(res.token, res.user);
       toast.success(`Mirë se erdhe, ${res.user.emri}!`);
-      router.push('/dashboard');
+      router.push(landingPathForRole(res.user.role));
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Gabim gjatë hyrjes');
     } finally {

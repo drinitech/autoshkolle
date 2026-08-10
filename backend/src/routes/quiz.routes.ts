@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middleware/auth';
-import { quizSubmitSchema } from '../utils/validation';
+import { requireAuth, requireRole } from '../middleware/auth';
+import { quizSubmitSchema, quizQuestionSchema } from '../utils/validation';
 import type { QuizCategory } from '@prisma/client';
 
 const router = Router();
@@ -173,6 +173,73 @@ router.get('/history/:studentId', requireAuth, async (req, res) => {
     select: { id: true, data: true, rezultati: true, kohaSekonda: true, iKaluar: true },
   });
   res.json(attempts);
+});
+
+// ─────────────────────────────────────────────────────────────
+// CRUD pyetjesh (vetëm ADMIN) — menaxhimi i bankës së pyetjeve
+// ─────────────────────────────────────────────────────────────
+
+// GET /quiz/questions?kategoria=... — lista e plotë (përfshi jo-aktivet), për panelin e adminit
+router.get('/questions', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  const { kategoria } = req.query as { kategoria?: string };
+  const questions = await prisma.quizQuestion.findMany({
+    where: kategoria ? { kategoria: kategoria as QuizCategory } : undefined,
+    include: { answers: true },
+    orderBy: { id: 'desc' },
+  });
+  res.json(questions);
+});
+
+router.post('/questions', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  const parsed = quizQuestionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.errors[0].message });
+  }
+  const { teksti, kategoria, veshtiresia, imazhi, aktiv, answers } = parsed.data;
+
+  const question = await prisma.quizQuestion.create({
+    data: { teksti, kategoria, veshtiresia, imazhi, aktiv, answers: { create: answers } },
+    include: { answers: true },
+  });
+  res.status(201).json(question);
+});
+
+router.put('/questions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  const { id } = req.params;
+  const parsed = quizQuestionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.errors[0].message });
+  }
+  const { teksti, kategoria, veshtiresia, imazhi, aktiv, answers } = parsed.data;
+
+  const existing = await prisma.quizQuestion.findUnique({ where: { id } });
+  if (!existing) return res.status(404).json({ error: 'Pyetja s\'u gjet' });
+
+  const question = await prisma.$transaction(async (tx) => {
+    // rikrijo përgjigjet — historia e attempt-eve mban eSakte edhe nëse answerId bëhet null (ON DELETE SET NULL)
+    await tx.quizAnswer.deleteMany({ where: { questionId: id } });
+    return tx.quizQuestion.update({
+      where: { id },
+      data: { teksti, kategoria, veshtiresia, imazhi, aktiv, answers: { create: answers } },
+      include: { answers: true },
+    });
+  });
+
+  res.json(question);
+});
+
+router.delete('/questions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.quizQuestion.delete({ where: { id } });
+    res.status(204).send();
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Pyetja s\'u gjet' });
+    if (err.code === 'P2003') {
+      return res.status(409).json({ error: 'Kjo pyetje është përdorur në teste ekzistuese — çaktivizoje në vend të fshirjes' });
+    }
+    throw err;
+  }
 });
 
 export default router;

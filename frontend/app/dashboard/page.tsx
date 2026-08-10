@@ -115,7 +115,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <AuthGate>
+    <AuthGate allowedRoles={['STUDENT']}>
       <DashboardContent />
     </AuthGate>
   );

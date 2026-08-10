@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const router = Router();
 
@@ -36,7 +36,7 @@ router.get('/weak-categories/:studentId', requireAuth, async (req, res) => {
 });
 
 // Dashboard admini — numra të përgjithshëm
-router.get('/admin-overview', requireAuth, async (_req, res) => {
+router.get('/admin-overview', requireAuth, requireRole('ADMIN'), async (_req, res) => {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();

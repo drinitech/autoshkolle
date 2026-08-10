@@ -3,20 +3,37 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
+import { landingPathForRole } from '@/lib/roles';
+import type { Role } from '@/lib/types';
 import { Navbar } from './Navbar';
 
-export function AuthGate({ children }: { children: React.ReactNode }) {
+export function AuthGate({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles?: Role[];
+}) {
   const [mounted, setMounted] = useState(false);
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (mounted && !token) router.replace('/login');
-  }, [mounted, token, router]);
+    if (!mounted) return;
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+    if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+      router.replace(landingPathForRole(user.role));
+    }
+  }, [mounted, token, user, allowedRoles, router]);
 
-  if (!mounted || !token) {
+  const roleOk = !allowedRoles || (user && allowedRoles.includes(user.role));
+
+  if (!mounted || !token || !roleOk) {
     return <div className="flex min-h-screen items-center justify-center text-ink-muted">Duke ngarkuar...</div>;
   }
 

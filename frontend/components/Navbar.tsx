@@ -2,20 +2,26 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Car, LayoutDashboard, CalendarPlus, GraduationCap, LogOut } from 'lucide-react';
+import { Car, LayoutDashboard, CalendarPlus, GraduationCap, LogOut, CalendarClock, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/auth-store';
+import type { Role } from '@/lib/types';
 
-const LINKS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/book-lesson', label: 'Rezervo Orë', icon: CalendarPlus },
-  { href: '/quiz', label: 'Testi i Teorisë', icon: GraduationCap },
-];
+const LINKS_BY_ROLE: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
+  STUDENT: [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/book-lesson', label: 'Rezervo Orë', icon: CalendarPlus },
+    { href: '/quiz', label: 'Testi i Teorisë', icon: GraduationCap },
+  ],
+  INSTRUCTOR: [{ href: '/instructor', label: 'Paneli Im', icon: CalendarClock }],
+  ADMIN: [{ href: '/admin', label: 'Paneli i Adminit', icon: ShieldCheck }],
+};
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const LINKS = LINKS_BY_ROLE[user?.role || 'STUDENT'];
 
   return (
     <header className="sticky top-0 z-40 border-b border-border-subtle bg-surface/90 backdrop-blur">
