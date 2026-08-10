@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum LicenseCategory {
+  A
+  B
+  C
+  D
+  BE
+  CE
+}
+
+enum StudentStatus {
+  AKTIV
+  PROVIM
+  PERFUNDUAR
+}
+
+enum LessonStatus {
+  REZERVUAR
+  PERFUNDUAR
+  ANULUAR
+  MUNGESE
+}
+
+enum SkillLevel {
+  E_DOBET
+  MESATARE
+  MIRE
+}
+
+enum QuizCategory {
+  SHENJA_RRUGORE
+  RREGULLA
+  SIGURIA
+  PARKIMI
+  PERPARESIA
+}
+
+enum QuizDifficulty {
+  LEHTE
+  MESATARE
+  VESHTIRE
+}
+
+// ─────────────────────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  emri      String
+  email     String   @unique
+  telefoni  String?
+  password  String
+  role      Role
+  krijuarMe DateTime @default(now())
+
+  instructor Instructor?
+  student    Student?
+
+  @@index([role])
+}
+
+model Instructor {
+  id             String @id @default(cuid())
+  userId         String @unique
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specializimi   LicenseCategory[]
+
+  availability   AvailabilitySlot[]
+  lessons        DrivingLesson[]
+}
+
+model AvailabilitySlot {
+  id           String     @id @default(cuid())
+  instructorId String
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  // Konkrete (jo javore) — një slot i lidhur me një datë specifike
+  data         DateTime   @db.Date
+  oraFillimit  String // "HH:mm"
+  oraMbarimit  String // "HH:mm"
+  iZene        Boolean    @default(false)
+
+  lesson       DrivingLesson?
+
+  createdAt    DateTime   @default(now())
+
+  // Parandalon dy slote identike për të njëjtin instruktor (mbron nga dublimi,
+  // race-safety reale mbrohet me transaction + row lock te booking).
+  @@unique([instructorId, data, oraFillimit])
+  @@index([instructorId, data])
+}
+
+model Student {
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kategoria       LicenseCategory
+  dataRegjistrimit DateTime       @default(now())
+  statusi         StudentStatus   @default(AKTIV)
+  oreKryera       Int             @default(0)
+
+  lessons         DrivingLesson[]
+  quizAttempts    QuizAttempt[]
+
+  @@index([statusi])
+}
+
+// ─────────────────────────────────────────────────────────────
+// LESSONS & EVALUATIONS
+// ─────────────────────────────────────────────────────────────
+
+model DrivingLesson {
+  id             String       @id @default(cuid())
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  instructorId   String
+  instructor     Instructor   @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  slotId         String?      @unique
+  slot           AvailabilitySlot? @relation(fields: [slotId], references: [id])
+
+  data           DateTime     @db.Date
+  oraFillimit    String
+  oraMbarimit    String
+  statusi        LessonStatus @default(REZERVUAR)
+  shenimet       String?
+
+  evaluation     LessonEvaluation?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([studentId])
+  @@index([instructorId])
+  @@index([data])
+}
+
+model LessonEvaluation {
+  id              String        @id @default(cuid())
+  drivingLessonId String        @unique
+  drivingLesson   DrivingLesson @relation(fields: [drivingLessonId], references: [id], onDelete: Cascade)
+  shenimTekst     String?
+  createdAt       DateTime      @default(now())
+
+  ratings         SkillRating[]
+}
+
+model SkillCategory {
+  id     String @id @default(cuid())
+  emri   String @unique
+  renditja Int  @default(0)
+
+  ratings SkillRating[]
+}
+
+model SkillRating {
+  id                  String            @id @default(cuid())
+  lessonEvaluationId  String
+  lessonEvaluation    LessonEvaluation  @relation(fields: [lessonEvaluationId], references: [id], onDelete: Cascade)
+  skillCategoryId     String
+  skillCategory       SkillCategory     @relation(fields: [skillCategoryId], references: [id])
+  vleresimi           SkillLevel
+
+  @@unique([lessonEvaluationId, skillCategoryId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// QUIZ / THEORY
+// ─────────────────────────────────────────────────────────────
+
+model QuizQuestion {
+  id         String         @id @default(cuid())
+  teksti     String
+  kategoria  QuizCategory
+  imazhi     String?
+  veshtiresia QuizDifficulty @default(MESATARE)
+  aktiv      Boolean        @default(true)
+
+  answers    QuizAnswer[]
+  attemptAnswers QuizAttemptAnswer[]
+
+  @@index([kategoria])
+}
+
+model QuizAnswer {
+  id         String       @id @default(cuid())
+  questionId String
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  teksti     String
+  eSakte     Boolean      @default(false)
+
+  attemptAnswers QuizAttemptAnswer[]
+
+  @@index([questionId])
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  data        DateTime @default(now())
+  rezultati   Float // përqindje 0-100
+  kohaSekonda Int
+  iKaluar     Boolean
+
+  answers     QuizAttemptAnswer[]
+
+  @@index([studentId])
+}
+
+model QuizAttemptAnswer {
+  id            String       @id @default(cuid())
+  quizAttemptId String
+  quizAttempt   QuizAttempt  @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
+  questionId    String
+  question      QuizQuestion @relation(fields: [questionId], references: [id])
+  answerId      String?
+  answer        QuizAnswer?  @relation(fields: [answerId], references: [id])
+  eSakte        Boolean
+
+  @@index([quizAttemptId])
+  @@index([questionId])
+}
