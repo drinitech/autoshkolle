@@ -1,5 +1,7 @@
 # Autoshkolla
 
+[![CI](https://github.com/drinitech/autoshkolle/actions/workflows/ci.yml/badge.svg)](https://github.com/drinitech/autoshkolle/actions/workflows/ci.yml)
+
 Aplikacion full-stack për menaxhimin e një autoshkolle: rezervim orësh praktike, test teorie adaptiv, dhe progress-tracking për studentët.
 
 ## Struktura
