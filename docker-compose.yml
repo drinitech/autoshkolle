@@ -1,0 +1,10 @@
+# Backend in Docker — uses the same .env as local dev (live database).
+#   docker compose up -d --build
+services:
+  backend:
+    build: ./backend
+    container_name: autoshkolle-backend
+    env_file: ./backend/.env
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    restart: unless-stopped
