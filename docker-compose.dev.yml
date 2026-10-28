@@ -1,0 +1,12 @@
+# Dev mode: src/ is bind-mounted and the server restarts on every change.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+# Back to the production image:  docker compose up -d --build
+# Changes to package.json or prisma/schema.prisma need a rebuild (--build).
+services:
+  backend:
+    image: autoshkolle-backend:dev
+    build:
+      context: ./backend
+      target: dev
+    volumes:
+      - ./backend/src:/app/src
