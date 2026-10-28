@@ -10,7 +10,8 @@ export default function HomePage() {
   const { token, user } = useAuthStore();
 
   useEffect(() => {
-    router.replace(token && user ? landingPathForRole(user.role) : '/login');
+    // Visitors without an account land on the public test catalog.
+    router.replace(token && user ? landingPathForRole(user.role) : '/teste');
   }, [token, user, router]);
 
   return <div className="flex min-h-screen items-center justify-center text-ink-muted">Duke ngarkuar...</div>;

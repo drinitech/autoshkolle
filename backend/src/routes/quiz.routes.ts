@@ -8,7 +8,14 @@ const router = Router();
 
 const ALL_CATEGORIES: QuizCategory[] = ['SHENJA_RRUGORE', 'RREGULLA', 'SIGURIA', 'PARKIMI', 'PERPARESIA'];
 const DEFAULT_QUESTION_COUNT = 40;
+const FULL_TEST_MINUTES = 25;
+const PRACTICE_QUESTION_COUNT = 10;
 const PASS_THRESHOLD = 90;
+
+// E njëjta normë si testi i plotë (25 min për 40 pyetje), e rrumbullakuar lart.
+function minutesFor(questionCount: number): number {
+  return Math.max(1, Math.ceil((questionCount * FULL_TEST_MINUTES) / DEFAULT_QUESTION_COUNT));
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice();
@@ -67,11 +74,69 @@ function distributeByWeight(errorRates: Record<string, number>, n: number): Reco
   return counts;
 }
 
-// GET /quiz/generate?studentId=...&count=40 — test adaptiv sipas historisë së gabimeve
+// GET /quiz/catalog — publik: testet që mund të shihen pa llogari. Për çdo kategori kthen
+// numrin e pyetjeve aktive dhe një pyetje shembull, PA treguar përgjigjen e saktë.
+router.get('/catalog', async (_req, res) => {
+  const counts = await prisma.quizQuestion.groupBy({
+    by: ['kategoria'],
+    where: { aktiv: true },
+    _count: { _all: true },
+  });
+  const countByCategory = new Map(counts.map((c) => [c.kategoria, c._count._all]));
+
+  const categories = await Promise.all(
+    ALL_CATEGORIES.map(async (kategoria) => {
+      const total = countByCategory.get(kategoria) ?? 0;
+      const sample = total
+        ? await prisma.quizQuestion.findFirst({
+            where: { kategoria, aktiv: true },
+            skip: Math.floor(Math.random() * total),
+            select: { teksti: true, imazhi: true, answers: { select: { id: true, teksti: true } } },
+          })
+        : null;
+      return { kategoria, totalQuestions: total, sample: sample && { ...sample, answers: shuffle(sample.answers) } };
+    })
+  );
+
+  res.json({
+    fullTest: {
+      questionCount: DEFAULT_QUESTION_COUNT,
+      timeLimitMinutes: FULL_TEST_MINUTES,
+      passThreshold: PASS_THRESHOLD,
+      totalQuestions: counts.reduce((sum, c) => sum + c._count._all, 0),
+    },
+    practice: { questionCount: PRACTICE_QUESTION_COUNT, timeLimitMinutes: minutesFor(PRACTICE_QUESTION_COUNT) },
+    categories,
+  });
+});
+
+// GET /quiz/generate?studentId=...&count=40 — test adaptiv sipas historisë së gabimeve.
+// Me &kategoria=SHENJA_RRUGORE kthen test ushtrimi vetëm nga ajo kategori (default 10 pyetje).
 router.get('/generate', requireAuth, async (req, res) => {
   const studentId = (req.query.studentId as string) || req.user!.studentId;
-  const count = Math.min(Math.max(parseInt((req.query.count as string) || '', 10) || DEFAULT_QUESTION_COUNT, 5), 100);
+  const kategoria = req.query.kategoria as QuizCategory | undefined;
+  if (kategoria && !ALL_CATEGORIES.includes(kategoria)) return res.status(400).json({ error: 'Kategori e panjohur' });
+  const defaultCount = kategoria ? PRACTICE_QUESTION_COUNT : DEFAULT_QUESTION_COUNT;
+  const count = Math.min(Math.max(parseInt((req.query.count as string) || '', 10) || defaultCount, 5), 100);
   if (!studentId) return res.status(400).json({ error: 'studentId mungon' });
+
+  if (kategoria) {
+    const pool = await prisma.quizQuestion.findMany({
+      where: { kategoria, aktiv: true },
+      include: { answers: { select: { id: true, teksti: true } } }, // s'kthejmë eSakte gjatë testit
+    });
+    const questions = shuffle(pool)
+      .slice(0, count)
+      .map((q) => ({
+        id: q.id,
+        teksti: q.teksti,
+        kategoria: q.kategoria,
+        imazhi: q.imazhi,
+        veshtiresia: q.veshtiresia,
+        answers: shuffle(q.answers),
+      }));
+    return res.json({ questions, timeLimitMinutes: minutesFor(questions.length), passThreshold: PASS_THRESHOLD });
+  }
 
   const errorRates = await computeCategoryErrorRates(studentId);
   const distribution = distributeByWeight(errorRates, count);
@@ -106,7 +171,7 @@ router.get('/generate', requireAuth, async (req, res) => {
     answers: shuffle(q.answers),
   }));
 
-  res.json({ questions, timeLimitMinutes: 25, passThreshold: PASS_THRESHOLD });
+  res.json({ questions, timeLimitMinutes: FULL_TEST_MINUTES, passThreshold: PASS_THRESHOLD });
 });
 
 // POST /quiz/submit

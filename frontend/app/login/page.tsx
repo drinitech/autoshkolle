@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Car } from 'lucide-react';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import { useAuthStore } from '@/lib/auth-store';
 import { landingPathForRole } from '@/lib/roles';
+import { readNextFromLocation, withNext } from '@/lib/next-path';
 import { Button, Card, Input } from '@/components/ui';
 import type { AuthUser } from '@/lib/types';
 
@@ -17,6 +18,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [next, setNext] = useState<string | null>(null);
+
+  useEffect(() => setNext(readNextFromLocation()), []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +29,8 @@ export default function LoginPage() {
       const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', { email, password });
       setAuth(res.token, res.user);
       toast.success(`Mirë se erdhe, ${res.user.emri}!`);
-      router.push(landingPathForRole(res.user.role));
+      // Only students can take tests, so `next` (e.g. /quiz?kategoria=…) applies to them.
+      router.push(next && res.user.role === 'STUDENT' ? next : landingPathForRole(res.user.role));
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Gabim gjatë hyrjes');
     } finally {
@@ -41,7 +46,9 @@ export default function LoginPage() {
             <Car size={22} />
           </div>
           <h1 className="text-lg font-bold text-ink">Autoshkolla</h1>
-          <p className="text-sm text-ink-muted">Hyr në llogarinë tënde</p>
+          <p className="text-sm text-ink-muted">
+            {next?.startsWith('/quiz') ? 'Kyçu për të filluar testin' : 'Hyr në llogarinë tënde'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -60,12 +67,9 @@ export default function LoginPage() {
 
         <p className="mt-5 text-center text-sm text-ink-muted">
           S&apos;ke llogari?{' '}
-          <Link href="/register" className="font-semibold text-brand-600 hover:underline">
+          <Link href={withNext('/register', next)} className="font-semibold text-brand-600 hover:underline">
             Regjistrohu
           </Link>
-        </p>
-        <p className="mt-3 text-center text-xs text-ink-muted">
-          Demo: student@... instruktor@... admin@autoshkolla.demo — fjalëkalimi Test1234
         </p>
       </Card>
     </div>

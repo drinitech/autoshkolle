@@ -11,7 +11,7 @@ const LINKS_BY_ROLE: Record<Role, { href: string; label: string; icon: typeof La
   STUDENT: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/book-lesson', label: 'Rezervo Orë', icon: CalendarPlus },
-    { href: '/quiz', label: 'Testi i Teorisë', icon: GraduationCap },
+    { href: '/teste', label: 'Testet', icon: GraduationCap },
   ],
   INSTRUCTOR: [{ href: '/instructor', label: 'Paneli Im', icon: CalendarClock }],
   ADMIN: [{ href: '/admin', label: 'Paneli i Adminit', icon: ShieldCheck }],

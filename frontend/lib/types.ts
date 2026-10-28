@@ -70,6 +70,17 @@ export interface QuizGenerateResponse {
   passThreshold: number;
 }
 
+/** GET /quiz/catalog — public; sample answers never include which one is correct. */
+export interface QuizCatalog {
+  fullTest: { questionCount: number; timeLimitMinutes: number; passThreshold: number; totalQuestions: number };
+  practice: { questionCount: number; timeLimitMinutes: number };
+  categories: {
+    kategoria: QuizCategory;
+    totalQuestions: number;
+    sample: { teksti: string; imazhi?: string | null; answers: { id: string; teksti: string }[] } | null;
+  }[];
+}
+
 export interface QuizSubmitResponse {
   attemptId: string;
   rezultati: number;

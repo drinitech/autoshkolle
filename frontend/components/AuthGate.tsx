@@ -23,7 +23,8 @@ export function AuthGate({
   useEffect(() => {
     if (!mounted) return;
     if (!token) {
-      router.replace('/login');
+      // Come back here after logging in (e.g. a specific test).
+      router.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {

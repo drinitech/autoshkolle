@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
@@ -8,7 +9,7 @@ import { useAuthStore } from '@/lib/auth-store';
 import { AuthGate } from '@/components/AuthGate';
 import { Badge, Button, Card, Skeleton } from '@/components/ui';
 import { QUIZ_CATEGORY_LABELS } from '@/lib/types';
-import type { QuizGenerateResponse, QuizQuestion, QuizSubmitResponse } from '@/lib/types';
+import type { QuizCategory, QuizGenerateResponse, QuizQuestion, QuizSubmitResponse } from '@/lib/types';
 
 type Stage = 'intro' | 'running' | 'result';
 
@@ -18,8 +19,15 @@ function formatTime(totalSeconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** `?kategoria=PARKIMI` turns the page into a short practice test for that category. */
+function readCategory(): QuizCategory | null {
+  const value = new URLSearchParams(window.location.search).get('kategoria');
+  return value && value in QUIZ_CATEGORY_LABELS ? (value as QuizCategory) : null;
+}
+
 function QuizContent() {
   const { user } = useAuthStore();
+  const [kategoria, setKategoria] = useState<QuizCategory | null>(null);
   const [stage, setStage] = useState<Stage>('intro');
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<QuizGenerateResponse | null>(null);
@@ -28,6 +36,8 @@ function QuizContent() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [result, setResult] = useState<QuizSubmitResponse | null>(null);
   const startedAt = useRef<number>(0);
+
+  useEffect(() => setKategoria(readCategory()), []);
 
   const submitQuiz = useCallback(
     async (finalAnswers: Record<string, string | null>) => {
@@ -63,7 +73,8 @@ function QuizContent() {
   async function startQuiz() {
     setLoading(true);
     try {
-      const res = await api.get<QuizGenerateResponse>(`/quiz/generate?studentId=${user?.studentId}`);
+      const categoryParam = kategoria ? `&kategoria=${kategoria}` : '';
+      const res = await api.get<QuizGenerateResponse>(`/quiz/generate?studentId=${user?.studentId}${categoryParam}`);
       setQuiz(res);
       setAnswers({});
       setCurrent(0);
@@ -90,13 +101,20 @@ function QuizContent() {
   if (stage === 'intro') {
     return (
       <Card className="mx-auto flex max-w-lg flex-col items-center gap-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-ink">Testi i Teorisë</h1>
+        <h1 className="text-xl font-bold text-ink">
+          {kategoria ? `Ushtrim: ${QUIZ_CATEGORY_LABELS[kategoria]}` : 'Testi i Teorisë'}
+        </h1>
         <p className="text-sm text-ink-muted">
-          Simulim i testit real: 40 pyetje, 25 minuta. Pyetjet përshtaten sipas kategorive ku ke gabuar më shpesh më parë.
+          {kategoria
+            ? 'Test i shkurtër me 10 pyetje vetëm nga kjo kategori.'
+            : 'Simulim i testit real: 40 pyetje, 25 minuta. Pyetjet përshtaten sipas kategorive ku ke gabuar më shpesh më parë.'}
         </p>
         <Button onClick={startQuiz} disabled={loading}>
           {loading ? 'Duke përgatitur...' : 'Fillo Testin'}
         </Button>
+        <Link href="/teste" className="text-sm font-medium text-brand-600 hover:underline">
+          Të gjitha testet
+        </Link>
       </Card>
     );
   }
@@ -202,7 +220,15 @@ function QuizContent() {
           </div>
         </Card>
 
-        <Button onClick={() => setStage('intro')} className="self-center">Bëj Test Tjetër</Button>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={() => setStage('intro')}>Përsërite këtë test</Button>
+          <Link
+            href="/teste"
+            className="rounded-xl border border-border-subtle px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted"
+          >
+            Zgjidh test tjetër
+          </Link>
+        </div>
       </div>
     );
   }

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Car } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import { useAuthStore } from '@/lib/auth-store';
+import { readNextFromLocation, withNext } from '@/lib/next-path';
 import { Button, Card, Input } from '@/components/ui';
 import type { AuthUser, LicenseCategory } from '@/lib/types';
 
@@ -17,6 +18,9 @@ export default function RegisterPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [form, setForm] = useState({ emri: '', email: '', telefoni: '', password: '', kategoria: 'B' as LicenseCategory });
   const [loading, setLoading] = useState(false);
+  const [next, setNext] = useState<string | null>(null);
+
+  useEffect(() => setNext(readNextFromLocation()), []);
 
   function update(field: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -32,7 +36,7 @@ export default function RegisterPage() {
       });
       setAuth(res.token, res.user);
       toast.success('Llogaria u krijua!');
-      router.push('/dashboard');
+      router.push(next ?? '/dashboard');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Gabim gjatë regjistrimit');
     } finally {
@@ -48,6 +52,9 @@ export default function RegisterPage() {
             <Car size={22} />
           </div>
           <h1 className="text-lg font-bold text-ink">Regjistrohu si Student</h1>
+          {next?.startsWith('/quiz') && (
+            <p className="text-sm text-ink-muted">Krijo një llogari falas për të filluar testin</p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -76,7 +83,7 @@ export default function RegisterPage() {
 
         <p className="mt-5 text-center text-sm text-ink-muted">
           Ke llogari?{' '}
-          <Link href="/login" className="font-semibold text-brand-600 hover:underline">
+          <Link href={withNext('/login', next)} className="font-semibold text-brand-600 hover:underline">
             Hyr
           </Link>
         </p>
